@@ -85,7 +85,7 @@ export default function ChatView({
         {/* Welcome Greeting Hero - Shown when conversation hasn't started */}
         {messages.length === 0 && (
           <div className="welcomeGreetingHero">
-            <h2 className="greetingTitle">👋 Hello, Chethan!</h2>
+            <h2 className="greetingTitle">👋 Welcome to KnowledgeFlow</h2>
             <p className="greetingSubtitle">
               Ask grounded questions across your documents, notes, videos and web sources.
             </p>

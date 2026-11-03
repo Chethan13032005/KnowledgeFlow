@@ -1,36 +1,34 @@
 # KnowledgeFlow – Multi-source RAG Assistant
 
-> **Ingest • Retrieve • Understand • Generate**
+> **Ingest • Retrieve • Understand • Generate**  
 > *A production-grade, grounded AI assistant over your documents, web pages, and videos.*
 
-![KnowledgeFlow Dashboard](assets/screenshots/dashboard.png)
-
-KnowledgeFlow is an open-source Retrieval-Augmented Generation (RAG) platform. Ingest knowledge from PDFs, DOCX, PPTX, text notes, web articles, and YouTube transcripts into isolated collection workspaces, then ask semantically grounded questions with full source transparency and no hallucinations.
+KnowledgeFlow is an AI-powered RAG platform that processes PDFs, documents, text, websites, and YouTube transcripts. It uses semantic search, Sentence Transformers, PostgreSQL with pgvector, and Groq LLMs to deliver context-aware answers with source transparency, collections, and persona-based responses.
 
 ---
 
 ## ✨ Features
 
-- **🌗 Light & Dark Themes** – Persistent theme preference, no flash on load.
+- **🌗 Light & Dark Themes** – Built-in persistent theme preference with zero flash on initial load.
 - **📄 Multi-Source Ingestion**
-  - Documents: PDF, DOCX, PPTX, TXT, Markdown
-  - Web: Article scraping via BeautifulSoup4
-  - Video: YouTube transcript extraction
-  - Raw text / paste notes
-- **🎯 Source-Grounded Answers** – Every answer cites exact source titles and cosine similarity scores.
-- **🗂️ Collection Workspaces** – Isolated multi-tenant namespaces with per-collection stats.
-- **👤 AI Personas** – Student, Developer, Interviewer, Concise.
-- **📊 Analytics Dashboard** – Sources, chunks, characters, active workspaces.
-- **🔍 Global Search (`Ctrl+K`)** – Instant search across collections and prompts.
-- **📖 Source Preview Modal** – Inspect raw chunk content with pagination.
-- **⚡ Ultra-low Latency** – Groq LPU inference (`qwen/qwen3.8-27b`).
-- **🛡️ Enterprise Vector Storage** – Supabase Postgres + pgvector with HNSW indexing.
-- **📱 Responsive Layout** – Desktop, tablet, and mobile (bottom nav on mobile).
-- **🐳 Docker Compose** – One-command deployment.
+  - **Documents**: PDF (`PyMuPDF`), DOCX (`python-docx`), PPTX (`python-pptx`), TXT, Markdown.
+  - **Web**: Clean article extraction via BeautifulSoup4.
+  - **Video**: Timestamped YouTube transcript extraction via `youtube-transcript-api`.
+  - **Raw Text**: Instant paste notes with automatic normalization.
+- **🎯 Source-Grounded Answers** – Every answer cites exact source names, chunk indices, and cosine similarity confidence scores.
+- **🗂️ Collection Workspaces** – Isolated multi-tenant namespaces with individual source deletion and storage quotas.
+- **👤 AI Personas** – Student, Developer, Interviewer, and Concise response styles.
+- **📊 Analytics Dashboard** – Real-time source counts, chunk counts, character counts, and workspace metrics.
+- **🔍 Global Quick Search (`Ctrl+K`)** – Instant modal search across collections and quick prompts.
+- **📖 Source Preview Modal** – Inspect raw chunk content with pagination and similarity scores.
+- **⚡ Ultra-low Latency Inference** – Powered by Groq LPUs (`qwen/qwen3.8-27b`) for rapid generation.
+- **🛡️ Resilient Vector Storage** – Supabase Postgres + `pgvector` with HNSW cosine distance indexing and resilient connection pooling.
+- **📱 Responsive Layout** – Desktop, tablet, and mobile layouts with a dedicated mobile bottom navigation bar.
+- **🐳 Docker Compose** – One-command containerized deployment.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Pipeline
 
 ```
                         ┌─────────────────────────┐
@@ -150,42 +148,42 @@ $$;
 
 ### Prerequisites
 
-| Requirement | Version |
+| Requirement | Recommended Version |
 |---|---|
 | Python | 3.10+ |
-| Node.js | 18+ |
-| [Supabase](https://supabase.com) account | Free tier works |
-| [Groq Cloud](https://console.groq.com) API key | Free tier works |
+| Node.js | 18+ (tested with v20+) |
+| [Supabase](https://supabase.com) account | Free tier (with pgvector enabled) |
+| [Groq Cloud](https://console.groq.com) API key | Free tier |
 
 ---
 
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/knowledgeflow.git
-cd knowledgeflow
+git clone https://github.com/Chethan13032005/KnowledgeFlow.git
+cd KnowledgeFlow
 ```
 
-### 2. Configure the backend
+### 2. Configure Environment Variables
 
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env and fill in your GROQ_API_KEY and DATABASE_URL
+# Edit .env and supply your GROQ_API_KEY and DATABASE_URL
 ```
 
-**`backend/.env` variables:**
+**`backend/.env` configuration guide:**
 
 | Variable | Description |
 |---|---|
 | `GROQ_API_KEY` | Your Groq Cloud API key from [console.groq.com](https://console.groq.com) |
-| `DATABASE_URL` | Supabase Postgres connection string (direct connection) |
+| `DATABASE_URL` | Supabase Postgres direct connection string |
 | `GROQ_MODEL` | LLM model name (default: `qwen/qwen3.8-27b`) |
-| `EMBEDDING_MODEL` | Embedding model (default: `sentence-transformers/all-MiniLM-L6-v2`) |
-| `DB_POOL_MAX_SIZE` | Connection pool size (default: `5`) |
-| `FRONTEND_ORIGIN` | CORS allowed origin (default: `http://localhost:3000`) |
+| `EMBEDDING_MODEL` | Local embedding model (default: `sentence-transformers/all-MiniLM-L6-v2`) |
+| `DB_POOL_MAX_SIZE` | Database connection pool size (default: `5`) |
+| `FRONTEND_ORIGIN` | Allowed CORS origin (default: `http://localhost:3000`) |
 
-### 3. Run locally
+### 3. Run Locally
 
 #### Backend (FastAPI)
 
@@ -194,17 +192,17 @@ cd backend
 
 # Create and activate virtual environment
 python -m venv .venv
-# Windows:
+# On Windows:
 .\.venv\Scripts\activate
-# macOS / Linux:
+# On macOS / Linux:
 source .venv/bin/activate
 
 pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-API available at `http://127.0.0.1:8000`  
-Swagger docs at `http://127.0.0.1:8000/docs`
+- API root: `http://127.0.0.1:8000`
+- Interactive OpenAPI docs: `http://127.0.0.1:8000/docs`
 
 #### Frontend (Next.js)
 
@@ -218,18 +216,18 @@ Open `http://localhost:3000` in your browser.
 
 ---
 
-### 4. Docker Compose (one-command)
+### 4. Docker Compose (One-Command Deployment)
 
-Ensure `backend/.env` is configured, then:
+Make sure `backend/.env` is configured, then run from the project root:
 
 ```bash
 docker-compose up --build -d
 ```
 
-| Service | URL |
+| Service | Access URL |
 |---|---|
-| Frontend | `http://localhost:3000` |
-| Backend API | `http://localhost:8000` |
+| Frontend Web UI | `http://localhost:3000` |
+| Backend API Docs | `http://localhost:8000/docs` |
 
 ---
 
@@ -237,54 +235,46 @@ docker-compose up --build -d
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Health check – backend + database connectivity |
-| `GET` | `/analytics` | Global stats: sources, chunks, character count |
-| `GET` | `/collections` | List all collections |
-| `GET` | `/collections/{name}/stats` | Stats for a specific collection |
-| `GET` | `/collections/{name}/sources` | All sources in a collection |
-| `DELETE` | `/collections/{name}` | Delete a collection and all its vectors |
-| `POST` | `/ingest/text` | Ingest raw text or pasted notes |
-| `POST` | `/ingest/file` | Upload PDF, DOCX, PPTX, TXT, or MD |
-| `POST` | `/ingest/url` | Scrape and ingest a web article |
-| `POST` | `/ingest/youtube` | Fetch and ingest a YouTube transcript |
-| `POST` | `/query` | Semantic search + grounded answer generation |
+| `GET` | `/health` | Healthcheck (validates backend and database connectivity) |
+| `GET` | `/analytics` | Global stats: total documents, chunks, and characters |
+| `GET` | `/collections` | List all unique collections with source counts |
+| `GET` | `/collections/{name}/stats` | Detailed stats for a specific collection |
+| `GET` | `/collections/{name}/sources` | List all sources in a collection |
+| `DELETE` | `/collections/{name}` | Delete an entire collection and all associated vectors |
+| `POST` | `/ingest/text` | Ingest raw text or paste notes |
+| `POST` | `/ingest/file` | Upload and chunk PDF, DOCX, PPTX, TXT, or MD |
+| `POST` | `/ingest/url` | Scrape and ingest website article |
+| `POST` | `/ingest/youtube` | Fetch transcript and ingest YouTube video |
+| `POST` | `/query` | Execute top-k vector retrieval and generate grounded response |
 
 ---
 
 ## 🧱 Tech Stack
 
-| Layer | Technology |
+| Component | Technology |
 |---|---|
-| **Frontend** | Next.js 16 (App Router), React 18, plain CSS variables |
-| **Backend** | Python 3.10+, FastAPI, Uvicorn |
-| **LLM** | Groq Cloud (`qwen/qwen3.8-27b`) |
-| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` (384-dim, local) |
-| **Vector DB** | Supabase Postgres + `pgvector` (HNSW cosine index) |
-| **Document parsing** | PyMuPDF, python-docx, python-pptx |
-| **Web scraping** | BeautifulSoup4, httpx |
-| **Video** | youtube-transcript-api |
+| **Frontend** | Next.js 16 (App Router), React 19, CSS variables design system |
+| **Backend** | Python 3.10+, FastAPI, Uvicorn, Pydantic v2 |
+| **LLM Inference** | Groq Cloud LPUs (`qwen/qwen3.8-27b`) |
+| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional dense vectors) |
+| **Vector Database** | Supabase PostgreSQL with `pgvector` and HNSW indexing |
+| **Document Loaders** | PyMuPDF (fitz), python-docx, python-pptx |
+| **Web & Video** | BeautifulSoup4, httpx, youtube-transcript-api |
 | **Containerization** | Docker, Docker Compose |
-
----
-
-## 📸 Screenshots
-
-| Dashboard | Answer with Sources |
-|---|---|
-| ![Dashboard](assets/screenshots/dashboard.png) | ![Answer with Sources](assets/screenshots/answer-with-sources.png) |
 
 ---
 
 ## 🤝 Contributing
 
+Contributions are welcome!
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Commit your changes: `git commit -m "feat: add your feature"`
-4. Push to your branch: `git push origin feat/your-feature`
+2. Create your branch (`git checkout -b feat/feature-name`)
+3. Commit your changes (`git commit -m "feat: description of feature"`)
+4. Push to the branch (`git push origin feat/feature-name`)
 5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is open-source. See [LICENSE](LICENSE) for details.
+This project is open-source under the [MIT License](LICENSE).

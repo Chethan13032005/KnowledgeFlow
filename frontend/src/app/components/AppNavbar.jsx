@@ -49,10 +49,10 @@ export default function AppNavbar({
 
         <div
           className="userProfileAvatar"
-          title="Chethan (Signed in)"
+          title="Account Settings"
           onClick={onOpenSettings}
         >
-          C
+          K
         </div>
       </div>
     </nav>
