@@ -1494,6 +1494,34 @@ button, input, textarea, select {
   max-width: 800px;
 }
 
+.activityFilterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+}
+
+.activityFilterPill:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.activityFilterPill.active {
+  background: var(--brand-blue);
+  color: #ffffff !important;
+  border-color: var(--brand-blue);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
 .activityTimelineList {
   display: flex;
   flex-direction: column;

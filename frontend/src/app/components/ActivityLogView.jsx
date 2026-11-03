@@ -40,18 +40,12 @@ export default function ActivityLogView({ activity = [], onClearActivity }) {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         {["all", "ingest", "query", "delete"].map((tab) => (
           <button
             key={tab}
-            className={`suggestionChipButton ${filter === tab ? "active" : ""}`}
-            style={{
-              padding: "5px 12px",
-              fontSize: "12px",
-              background: filter === tab ? "var(--brand-blue)" : "var(--bg-input)",
-              color: filter === tab ? "#ffffff" : "inherit",
-              borderColor: filter === tab ? "var(--brand-blue)" : "var(--border-subtle)",
-            }}
+            type="button"
+            className={`activityFilterPill ${filter === tab ? "active" : ""}`}
             onClick={() => setFilter(tab)}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}

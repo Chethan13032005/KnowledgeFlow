@@ -528,6 +528,7 @@ export default function Home() {
               analyticsData={analyticsData}
               stats={stats}
               collectionName={collectionName}
+              allSources={allSources}
             />
           )}
 
