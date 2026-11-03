@@ -31,26 +31,26 @@ KnowledgeFlow is an AI-powered RAG platform that processes PDFs, documents, text
 ## 🏗️ Architecture & Pipeline
 
 ```
-                        ┌─────────────────────────┐
-                        │   KnowledgeFlow Web UI   │
-                        │   Next.js 16 (App Router)│
-                        └───────────┬─────────────┘
+                        ┌────────────────────────────┐
+                        │   KnowledgeFlow Web UI     │
+                        │   Next.js 16 (App Router)  │
+                        └───────────┬────────────────┘
                                     │ HTTP / JSON
                                     ▼
-                        ┌─────────────────────────┐
+                        ┌───────────────────────────┐
                         │   FastAPI Backend (Python)│
-                        └───────────┬─────────────┘
+                        └───────────┬───────────────┘
               ┌─────────────────────┴──────────────────────┐
               ▼ Ingestion Pipeline                         ▼ Query Pipeline
   ┌───────────────────────┐                   ┌───────────────────────┐
-  │ Multi-Source Loaders  │                   │  User Query + Persona  │
+  │ Multi-Source Loaders  │                   │  User Query + Persona │
   │ PDF|DOCX|PPTX|Web|YT  │                   └───────────┬───────────┘
   └───────────┬───────────┘                               │ embed
               │ raw text                                  ▼
-              ▼                               ┌───────────────────────┐
+              ▼                               ┌────────────────────────┐
   ┌───────────────────────┐                   │ SentenceTransformers   │
   │ Clean + Normalize     │                   │ all-MiniLM-L6-v2 (384d)│
-  └───────────┬───────────┘                   └───────────┬───────────┘
+  └───────────┬───────────┘                   └───────────┬────────────┘
               │                                           │ query vector
               ▼                                           │
   ┌───────────────────────┐                               │
@@ -58,11 +58,11 @@ KnowledgeFlow is an AI-powered RAG platform that processes PDFs, documents, text
   │   120 overlap)        │                               │
   └───────────┬───────────┘                               │
               │ embed                                     │
-              ▼                                           │
-  ┌───────────────────────────────────────────────────────┴──┐
-  │              Supabase Postgres + pgvector                  │
-  │  rag_documents | rag_chunks | match_rag_chunks() [HNSW]   │
-  └───────────────────────────┬──────────────────────────────┘
+              ▼                                           ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │              Supabase Postgres + pgvector                   │
+  │  rag_documents | rag_chunks | match_rag_chunks() [HNSW]     │  
+  └───────────────────────────┬─────────────────────────────────┘
                               │ Top-K chunks (cosine similarity)
                               ▼
                   ┌───────────────────────┐
@@ -75,6 +75,78 @@ KnowledgeFlow is an AI-powered RAG platform that processes PDFs, documents, text
                   │  Grounded Answer +    │
                   │  Source Citations     │
                   └───────────────────────┘
+```
+
+## Directory Structure
+
+```text
+chethan13032005-knowledgeflow/
+├── README.md
+├── docker-compose.yml
+├── LICENSE
+├── assets/
+│   └── screenshots/
+│       ├── .gitkeep
+│       ├── analytics_&_usage_page.png
+│       ├── ingest_sources_page.png
+│       ├── rag_working_dark-mode.png
+│       ├── rag_working_light-mode.png
+│       └── retirieved_chunk_preview.png
+├── backend/
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   ├── .env.example
+│   ├── .python-version
+│   └── app/
+│       ├── __init__.py
+│       ├── config.py
+│       ├── main.py
+│       ├── schemas.py
+│       └── services/
+│           ├── __init__.py
+│           ├── chunker.py
+│           ├── embeddings.py
+│           ├── rag.py
+│           ├── text_cleaner.py
+│           ├── vector_store.py
+│           └── loaders/
+│               ├── __init__.py
+│               ├── document_loader.py
+│               ├── web_loader.py
+│               └── youtube_loader.py
+└── frontend/
+    ├── Dockerfile
+    ├── next.config.js
+    ├── package.json
+    └── src/
+        └── app/
+            ├── globals.css
+            ├── layout.js
+            ├── page.js
+            ├── components/
+            │   ├── ActivityLogView.jsx
+            │   ├── AnalyticsView.jsx
+            │   ├── AnswerBlocks.jsx
+            │   ├── AppNavbar.jsx
+            │   ├── AppSidebar.jsx
+            │   ├── BrandHeader.jsx
+            │   ├── ChatPanel.jsx
+            │   ├── ChatView.jsx
+            │   ├── CollectionsView.jsx
+            │   ├── EvidencePanel.jsx
+            │   ├── IngestView.jsx
+            │   ├── MobileBottomNav.jsx
+            │   ├── RightSidebar.jsx
+            │   ├── SearchModal.jsx
+            │   ├── SettingsModal.jsx
+            │   ├── Sidebar.jsx
+            │   ├── SourcePreviewModal.jsx
+            │   ├── Toast.jsx
+            │   └── Topbar.jsx
+            └── lib/
+                ├── api.js
+                ├── constants.js
+                └── utils.js
 ```
 
 ---
