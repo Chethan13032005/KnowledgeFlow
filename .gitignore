@@ -1,0 +1,87 @@
+# =============================================================================
+# KnowledgeFlow – .gitignore
+# Tech stack: Python (FastAPI) + Node.js (Next.js)
+# =============================================================================
+
+# --------------- SECRETS & CREDENTIALS (NEVER COMMIT) -----------------------
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# --------------- PYTHON ------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.log
+.tox/
+.nox/
+
+# --------------- NODE / NEXT.JS ----------------------------------------------
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+frontend/.env*.local
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.yarn/install-state.gz
+
+# --------------- DOCKER ------------------------------------------------------
+*.dockerignore
+
+# --------------- OS ----------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V5
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --------------- IDE & EDITORS -----------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# --------------- LOCAL CACHES & TEMP -----------------------------------------
+.cache/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# --------------- LOGS --------------------------------------------------------
+*.log
+logs/
