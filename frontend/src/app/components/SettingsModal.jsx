@@ -189,7 +189,7 @@ export default function SettingsModal({
             {activeTab === "about" && (
               <>
                 <div>
-                  <h4 style={{ fontSize: "16px", fontWeight: 800 }}>KnowledgeFlow v2.0.0</h4>
+                  <h4 style={{ fontSize: "16px", fontWeight: 800 }}>KnowledgeFlow</h4>
                   <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>
                     Multi-source knowledge processing & grounded generative retrieval system.
                   </p>

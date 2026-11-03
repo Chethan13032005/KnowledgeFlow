@@ -264,6 +264,22 @@ docker-compose up --build -d
 
 ---
 
+## 📸 Screenshots
+
+| Grounded Q&A (Dark Mode) | Grounded Q&A (Light Mode) |
+|:---:|:---:|
+| ![KnowledgeFlow Dark Mode](assets/screenshots/rag_working_dark-mode.png) | ![KnowledgeFlow Light Mode](assets/screenshots/rag_working_light-mode.png) |
+
+| Multi-Source Ingestion | Retrieved Chunks Inspection |
+|:---:|:---:|
+| ![Ingest Sources](assets/screenshots/ingest_sources_page.png) | ![Retrieved Chunk Preview](assets/screenshots/retirieved_chunk_preview.png) |
+
+| Analytics & Usage Insights |
+|:---:|
+| ![Analytics & Usage](assets/screenshots/analytics_&_usage_page.png) |
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome!
