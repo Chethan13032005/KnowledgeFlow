@@ -56,9 +56,18 @@ def build_retrieval_question(question: str, chat_history: list[dict[str, str]]) 
 
 class RAGService:
     def __init__(self) -> None:
+        import httpx
         self.settings = get_settings()
         self.vector_store = get_vector_store()
-        self.client = Groq(api_key=self.settings.groq_api_key)
+        api_key = (self.settings.groq_api_key or "").strip().strip("'\"")
+
+        try:
+            # Force IPv4 transport to prevent Render IPv6 route timeout
+            transport = httpx.HTTPTransport(local_address="0.0.0.0")
+            http_client = httpx.Client(transport=transport, timeout=45.0)
+            self.client = Groq(api_key=api_key, http_client=http_client)
+        except Exception:
+            self.client = Groq(api_key=api_key, timeout=45.0)
 
     def answer(
         self,
