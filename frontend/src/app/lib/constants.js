@@ -1,6 +1,5 @@
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (typeof window !== "undefined" ? "/api" : (process.env.BACKEND_URL || "http://localhost:8000"));
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://multisource-rag-backend-ikyw.onrender.com";
 
 export const SOURCE_TABS = [
   { id: "text", label: "Text", hint: "Paste notes, docs, snippets" },
