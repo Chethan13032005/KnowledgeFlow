@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
@@ -42,6 +42,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def handle_api_prefix(request: Request, call_next):
+    """Support deployment behind /api rewrites (such as Vercel multi-service routing) while preserving direct root routes."""
+    if request.url.path.startswith("/api/"):
+        request.scope["path"] = request.url.path[4:]
+    elif request.url.path == "/api":
+        request.scope["path"] = "/"
+    return await call_next(request)
 
 
 def validate_collection_name(collection_name: str) -> str:
