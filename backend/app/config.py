@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,12 @@ class Settings(BaseSettings):
     debug_timing: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def model_post_init(self, __context):
+        if not self.groq_api_key:
+            self.groq_api_key = os.getenv("GROQ_API_KEY", "")
+        if not self.database_url:
+            self.database_url = os.getenv("DATABASE_URL", "")
 
     @property
     def allowed_origins(self) -> list[str]:
