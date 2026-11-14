@@ -22,6 +22,7 @@ class QueryRequest(BaseModel):
     question: str
     top_k: int = 5
     persona: str = "student"
+    mode: str = "standard"
     chat_history: list[ChatMessage] = Field(default_factory=list)
 
 
@@ -99,3 +100,17 @@ class AnalyticsResponse(BaseModel):
     chunks: int
     characters: int
     source_distribution: dict[str, int] = Field(default_factory=dict)
+
+
+class RealtimeAnalyticsResponse(BaseModel):
+    total_queries: int = 0
+    avg_ttft_ms: float = 0.0
+    avg_latency_ms: float = 0.0
+    cache_hit_rate_pct: float = 0.0
+    total_tokens_saved: int = 0
+    avg_faithfulness_score: float = 0.0
+    avg_retrieval_confidence: float = 0.0
+    guardrails_triggered: int = 0
+    guardrail_breakdown: dict[str, int] = Field(default_factory=dict)
+    time_series: list[dict] = Field(default_factory=list)
+    recent_queries: list[dict] = Field(default_factory=list)

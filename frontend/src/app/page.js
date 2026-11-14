@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { request } from "./lib/api";
+import { request, streamQuery } from "./lib/api";
 
 import BrandHeader from "./components/BrandHeader";
 import AppSidebar from "./components/AppSidebar";
@@ -29,12 +29,16 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [previewSource, setPreviewSource] = useState(null);
 
+  // Backend connection status
+  const [isWakingUp, setIsWakingUp] = useState(false);
+
   // Workspace / Collection
   const [collectionName, setCollectionName] = useState("dsa-placement-master");
   const [collections, setCollections] = useState(["dsa-placement-master"]);
   const [stats, setStats] = useState(null);
   const [allSources, setAllSources] = useState([]);
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [realtimeAnalytics, setRealtimeAnalytics] = useState(null);
 
   // Ingestion Inputs
   const [activeTab, setActiveTab] = useState("text");
@@ -47,7 +51,7 @@ export default function Home() {
 
   // Chat & Q&A
   const [question, setQuestion] = useState("");
-  const [persona, setPersona] = useState("student");
+  const [persona, setPersona] = useState("standard");
   const [topK, setTopK] = useState(3);
   const [answer, setAnswer] = useState("");
   const [sources, setSources] = useState([]);
@@ -81,10 +85,12 @@ export default function Home() {
   }, []);
 
   function handleThemeChange(newTheme) {
-    const target = (typeof newTheme === "string" && (newTheme === "light" || newTheme === "dark"))
-      ? newTheme
-      : (theme === "dark" ? "light" : "dark");
-    console.log("[KnowledgeFlow ThemeChange]", { newTheme, target, currentTheme: theme });
+    const target =
+      typeof newTheme === "string" && (newTheme === "light" || newTheme === "dark")
+        ? newTheme
+        : theme === "dark"
+        ? "light"
+        : "dark";
     setTheme(target);
     try {
       localStorage.setItem("knowledgeflow-theme", target);
@@ -97,15 +103,17 @@ export default function Home() {
   }
 
   function pushActivity(type, message) {
-    setActivity((prev) => [
-      {
-        id: crypto.randomUUID(),
-        type,
-        message,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      },
-      ...prev,
-    ].slice(0, 20));
+    setActivity((prev) =>
+      [
+        {
+          id: crypto.randomUUID(),
+          type,
+          message,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+        ...prev,
+      ].slice(0, 20)
+    );
   }
 
   function showToast(type, message) {
@@ -177,10 +185,34 @@ export default function Home() {
     }
   }
 
-  // Initial Load
+  // Load Realtime Telemetry from Supabase query_logs
+  async function loadRealtimeAnalytics() {
+    try {
+      const data = await request("/analytics/realtime");
+      setRealtimeAnalytics(data);
+    } catch {
+      // keep fallback
+    }
+  }
+
+  // Initial Load with Backend Cold-Start Detection
   useEffect(() => {
+    let timer = setTimeout(() => setIsWakingUp(true), 2500);
+
+    request("/health")
+      .then(() => {
+        clearTimeout(timer);
+        setIsWakingUp(false);
+      })
+      .catch(() => {
+        setIsWakingUp(true);
+      });
+
     loadCollections();
     loadAnalytics();
+    loadRealtimeAnalytics();
+
+    return () => clearTimeout(timer);
   }, []);
 
   // When collection changes
@@ -272,7 +304,6 @@ export default function Home() {
       await loadCollectionSources(col);
       await loadAnalytics();
 
-      // Clear input fields
       setRawText("");
       setUrl("");
       setYoutubeUrl("");
@@ -285,7 +316,7 @@ export default function Home() {
     }
   }
 
-  // Handle Ask / Query as clean conversational chatbot
+  // Handle Ask / Query with SSE Streaming & Telemetry
   async function handleAsk(promptOverride) {
     const col = collectionName.trim();
     if (!col) {
@@ -296,7 +327,6 @@ export default function Home() {
     const q = (typeof promptOverride === "string" ? promptOverride : question).trim();
     if (!q) return;
 
-    // Immediately clear the typing area so the user can see it sent!
     setQuestion("");
 
     const now = new Date();
@@ -321,48 +351,112 @@ export default function Home() {
       persona,
     };
 
-    // Append both to chatbot message history immediately
     setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
     setQueryLoading(true);
 
+    let accumulatedAnswer = "";
+    let retrievedSources = [];
+
     try {
-      const data = await request("/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          collection_name: col,
-          question: q,
-          top_k: Number(topK),
-          persona,
-          chat_history: memoryEnabled ? chatHistory.slice(-6) : [],
-        }),
+      await streamQuery({
+        collection_name: col,
+        question: q,
+        top_k: Number(topK),
+        mode: persona,
+        persona,
+        chat_history: memoryEnabled ? chatHistory.slice(-6) : [],
+        onStart: () => {
+          // SSE connection started
+        },
+        onMetadata: (meta) => {
+          retrievedSources = meta.sources || [];
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    sources: retrievedSources,
+                    cache_hit: meta.cache_hit,
+                    confidence: meta.confidence,
+                    guardrail_status: meta.guardrail_status,
+                  }
+                : msg
+            )
+          );
+          setSources(retrievedSources);
+        },
+        onToken: (token) => {
+          accumulatedAnswer += token;
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, content: accumulatedAnswer, loading: false }
+                : msg
+            )
+          );
+        },
+        onDone: (telemetry) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    content: accumulatedAnswer,
+                    telemetry: telemetry || {},
+                    sources: (telemetry && telemetry.sources) || retrievedSources,
+                    cache_hit: telemetry?.cache_hit ?? msg.cache_hit,
+                    loading: false,
+                  }
+                : msg
+            )
+          );
+          setAnswer(accumulatedAnswer);
+          if (telemetry?.sources) {
+            setSources(telemetry.sources);
+          }
+          if (memoryEnabled) {
+            setChatHistory((prev) =>
+              [
+                ...prev,
+                { role: "user", content: q },
+                { role: "assistant", content: accumulatedAnswer },
+              ].slice(-8)
+            );
+          }
+          pushActivity("query", `Asked: ${q.slice(0, 50)}...`);
+          loadAnalytics();
+          loadRealtimeAnalytics();
+        },
+        onError: async (err) => {
+          console.warn("[SSE streaming fallback]", err);
+          // Fallback to standard synchronous /query
+          const fallbackData = await request("/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              collection_name: col,
+              question: q,
+              top_k: Number(topK),
+              mode: persona,
+              persona,
+              chat_history: memoryEnabled ? chatHistory.slice(-6) : [],
+            }),
+          });
+          const ans = fallbackData.answer || "";
+          const srcs = fallbackData.sources || [];
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, content: ans, sources: srcs, loading: false }
+                : msg
+            )
+          );
+          setAnswer(ans);
+          setSources(srcs);
+          loadAnalytics();
+          loadRealtimeAnalytics();
+        },
       });
-
-      const ans = data.answer || "";
-      const srcs = Array.isArray(data.sources) ? data.sources : [];
-
-      // Update assistant message with grounded answer and retrieved sources
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMsgId
-            ? { ...msg, content: ans, sources: srcs, loading: false }
-            : msg
-        )
-      );
-
-      setAnswer(ans);
-      setSources(srcs);
-
-      if (memoryEnabled) {
-        setChatHistory((prev) => [
-          ...prev,
-          { role: "user", content: q },
-          { role: "assistant", content: ans },
-        ].slice(-8));
-      }
-
-      pushActivity("query", `Asked: ${q.slice(0, 50)}...`);
-      setCurrentView("chat");
     } catch (err) {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -421,6 +515,7 @@ export default function Home() {
       }
       await loadCollections();
       await loadAnalytics();
+      await loadRealtimeAnalytics();
     } catch (err) {
       showToast("error", err.message);
     }
@@ -443,6 +538,7 @@ export default function Home() {
       <BrandHeader
         theme={theme}
         onToggleTheme={handleThemeChange}
+        isWakingUp={isWakingUp}
       />
 
       {/* Main Workspace (3-Column Layout) */}
@@ -468,8 +564,16 @@ export default function Home() {
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
 
-          {/* Dynamic Sub-View Switcher */}
-          {currentView === "chat" && (
+          {/* Zero-Blink Chat View: Remains continuously mounted */}
+          <div
+            style={{
+              display: currentView === "chat" ? "flex" : "none",
+              flex: 1,
+              height: "100%",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
             <ChatView
               question={question}
               setQuestion={setQuestion}
@@ -488,7 +592,7 @@ export default function Home() {
               onOpenIngest={() => setCurrentView("ingest")}
               onPreviewSource={(src) => setPreviewSource(src)}
             />
-          )}
+          </div>
 
           {currentView === "ingest" && (
             <IngestView
@@ -526,6 +630,7 @@ export default function Home() {
           {currentView === "analytics" && (
             <AnalyticsView
               analyticsData={analyticsData}
+              realtimeData={realtimeAnalytics}
               stats={stats}
               collectionName={collectionName}
               allSources={allSources}
@@ -540,67 +645,77 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Evidence Sidebar (Retrieved Chunks & All Sources) */}
+        {/* Right Sidebar */}
         <RightSidebar
-          sources={sources}
+          stats={stats}
+          collectionName={collectionName}
+          topK={topK}
+          setTopK={setTopK}
+          persona={persona}
+          setPersona={setPersona}
+          memoryEnabled={memoryEnabled}
+          setMemoryEnabled={setMemoryEnabled}
+          chatHistory={chatHistory}
+          onClearMemory={handleClearMemory}
           allSources={allSources}
-          copyText={copyText}
           onPreviewSource={(src) => setPreviewSource(src)}
         />
       </div>
 
-      {/* Settings Modal (with Light/Dark Mode switch cards) */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        theme={theme}
-        setTheme={handleThemeChange}
-        persona={persona}
-        setPersona={setPersona}
-        memoryEnabled={memoryEnabled}
-        setMemoryEnabled={setMemoryEnabled}
-        onClearMemory={handleClearMemory}
-        chatHistoryLength={chatHistory.length}
-      />
-
-      {/* Source Preview Modal */}
-      <SourcePreviewModal
-        isOpen={Boolean(previewSource)}
-        source={previewSource}
-        onClose={() => setPreviewSource(null)}
-      />
-
-      {/* Ctrl+K Global Search Modal */}
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        collections={collections}
-        onSelectCollection={(c) => {
-          setCollectionName(c);
-          setCurrentView("chat");
-        }}
-        onSelectPrompt={(p) => {
-          setQuestion(p);
-          setCurrentView("chat");
-        }}
-      />
-
-      {/* Toast Notifications */}
-      {toast && (
-        <div className="toastOverlay">
-          <div className={`toastPill ${toast.type}`}>
-            <span>{toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "ℹ"}</span>
-            <span>{toast.message}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Bottom Navigation — only visible on ≤768px */}
+      {/* Mobile Navigation */}
       <MobileBottomNav
         currentView={currentView}
         setCurrentView={setCurrentView}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
+
+      {/* Modals & Overlays */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        collectionName={collectionName}
+        topK={topK}
+        setTopK={setTopK}
+        persona={persona}
+        setPersona={setPersona}
+        memoryEnabled={memoryEnabled}
+        setMemoryEnabled={setMemoryEnabled}
+        onClearMemory={handleClearMemory}
+        theme={theme}
+        onToggleTheme={handleThemeChange}
+      />
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        collections={collections}
+        activeCollection={collectionName}
+        onSelectCollection={(c) => {
+          setCollectionName(c);
+          setIsSearchOpen(false);
+        }}
+        onQuickAsk={(q) => {
+          setIsSearchOpen(false);
+          setCurrentView("chat");
+          handleAsk(q);
+        }}
+      />
+
+      <SourcePreviewModal
+        source={previewSource}
+        onClose={() => setPreviewSource(null)}
+        collectionName={collectionName}
+      />
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className={`floatingToastNotification ${toast.type}`}>
+          <span>
+            {toast.type === "success" ? "✓" : toast.type === "error" ? "✕" : "ℹ"}
+          </span>
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }

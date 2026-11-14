@@ -8,11 +8,20 @@ export const SOURCE_TABS = [
   { id: "youtube", label: "YouTube", hint: "Use video transcript" },
 ];
 
+export const RAG_MODES = [
+  { value: "standard", label: "Standard", desc: "Balanced & grounded" },
+  { value: "deep_research", label: "Deep Research", desc: "Analytical synthesis" },
+  { value: "concise", label: "Concise", desc: "Crisp bullet points" },
+  { value: "code_focused", label: "Code-Focused", desc: "Syntax & architecture" },
+];
+
 export const PERSONAS = [
-  { value: "student", label: "Student" },
-  { value: "developer", label: "Developer" },
-  { value: "interviewer", label: "Interviewer" },
-  { value: "concise", label: "Concise" },
+  { value: "standard", label: "⚡ Standard" },
+  { value: "deep_research", label: "🔬 Deep Research" },
+  { value: "concise", label: "✂️ Concise" },
+  { value: "code_focused", label: "💻 Code-Focused" },
+  { value: "student", label: "🎓 Student" },
+  { value: "interviewer", label: "💼 Interviewer" },
 ];
 
 export const EXAMPLE_QUESTIONS = [

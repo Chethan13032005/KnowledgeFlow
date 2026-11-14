@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.schemas import (
@@ -14,6 +15,7 @@ from app.schemas import (
     IngestResponse,
     QueryRequest,
     QueryResponse,
+    RealtimeAnalyticsResponse,
     SourceChunksResponse,
     SourcesListResponse,
     TextIngestRequest,
@@ -223,6 +225,11 @@ def get_analytics() -> AnalyticsResponse:
     return AnalyticsResponse(**stats)
 
 
+@app.get("/analytics/realtime", response_model=RealtimeAnalyticsResponse, tags=["Analytics"])
+def get_realtime_analytics_endpoint() -> dict:
+    return get_vector_store().get_realtime_analytics()
+
+
 @app.get("/collections", response_model=CollectionsResponse, tags=["Collections"])
 def list_collections() -> CollectionsResponse:
     collections = get_vector_store().list_collections()
@@ -367,17 +374,43 @@ def ingest_youtube(payload: UrlIngestRequest) -> IngestResponse:
     )
 
 
+@app.post("/query/stream", tags=["Query"])
+def query_stream(payload: QueryRequest):
+    if not payload.question.strip():
+        raise HTTPException(status_code=400, detail="Question is required.")
+
+    rag_service = get_rag_service()
+    active_mode = payload.mode if payload.mode and payload.mode != "standard" else (payload.persona or "standard")
+
+    return StreamingResponse(
+        rag_service.answer_stream(
+            collection_name=payload.collection_name,
+            question=payload.question,
+            top_k=payload.top_k,
+            persona=active_mode,
+            chat_history=payload.chat_history,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.post("/query", response_model=QueryResponse, tags=["Query"])
 def query(payload: QueryRequest) -> dict:
     if not payload.question.strip():
         raise HTTPException(status_code=400, detail="Question is required.")
 
     try:
+        active_mode = payload.mode if payload.mode and payload.mode != "standard" else (payload.persona or "standard")
         result = get_rag_service().answer(
             collection_name=payload.collection_name,
             question=payload.question,
             top_k=payload.top_k,
-            persona=payload.persona,
+            persona=active_mode,
             chat_history=payload.chat_history,
         )
 
