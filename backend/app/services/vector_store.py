@@ -177,24 +177,47 @@ class VectorStore:
             with conn.cursor() as cur:
                 t1 = time.perf_counter()
 
-                cur.execute(
-                    """
-                    select
-                      id,
-                      document_id,
-                      collection_name,
-                      source_type,
-                      source_name,
-                      chunk_index,
-                      content,
-                      metadata,
-                      similarity
-                    from match_rag_chunks(%s::extensions.vector, %s, %s)
-                    """,
-                    (vector_to_pg(q_vector), top_k, collection),
-                )
-
-                rows = cur.fetchall()
+                try:
+                    cur.execute(
+                        """
+                        select
+                          id,
+                          document_id,
+                          collection_name,
+                          source_type,
+                          source_name,
+                          chunk_index,
+                          content,
+                          metadata,
+                          similarity
+                        from match_rag_chunks(%s::extensions.vector, %s, %s)
+                        """,
+                        (vector_to_pg(q_vector), top_k, collection),
+                    )
+                    rows = cur.fetchall()
+                except Exception:
+                    conn.rollback()
+                    pg_vec = vector_to_pg(q_vector)
+                    cur.execute(
+                        """
+                        select
+                          id,
+                          document_id,
+                          collection_name,
+                          source_type,
+                          source_name,
+                          chunk_index,
+                          content,
+                          metadata,
+                          1 - (embedding <=> %s::extensions.vector) as similarity
+                        from rag_chunks
+                        where collection_name = %s
+                        order by embedding <=> %s::extensions.vector
+                        limit %s
+                        """,
+                        (pg_vec, collection, pg_vec, top_k),
+                    )
+                    rows = cur.fetchall()
                 log_timing("postgres vector search", time.perf_counter() - t1)
 
         items: list[dict[str, Any]] = []

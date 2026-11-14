@@ -338,31 +338,36 @@ def query(payload: QueryRequest) -> dict:
     if not payload.question.strip():
         raise HTTPException(status_code=400, detail="Question is required.")
 
-    result = get_rag_service().answer(
-        collection_name=payload.collection_name,
-        question=payload.question,
-        top_k=payload.top_k,
-        persona=payload.persona,
-        chat_history=payload.chat_history,
-    )
-
-    sources = []
-
-    for item in result.get("sources", []):
-        metadata = item.get("metadata", {}) or {}
-
-        sources.append(
-            {
-                "source_type": metadata.get("source_type", "unknown"),
-                "source_name": metadata.get("source_name", "unknown"),
-                "chunk_index": metadata.get("chunk_index"),
-                "text": item.get("text", ""),
-                "score": item.get("score"),
-                "metadata": metadata,
-            }
+    try:
+        result = get_rag_service().answer(
+            collection_name=payload.collection_name,
+            question=payload.question,
+            top_k=payload.top_k,
+            persona=payload.persona,
+            chat_history=payload.chat_history,
         )
 
-    return {
-        "answer": result.get("answer", ""),
-        "sources": sources,
-    }
+        sources = []
+
+        for item in result.get("sources", []):
+            metadata = item.get("metadata", {}) or {}
+
+            sources.append(
+                {
+                    "source_type": metadata.get("source_type", "unknown"),
+                    "source_name": metadata.get("source_name", "unknown"),
+                    "chunk_index": metadata.get("chunk_index"),
+                    "text": item.get("text", ""),
+                    "score": item.get("score"),
+                    "metadata": metadata,
+                }
+            )
+
+        return {
+            "answer": result.get("answer", ""),
+            "sources": sources,
+        }
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Query error: {str(exc)}")
