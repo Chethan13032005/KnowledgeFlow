@@ -183,6 +183,40 @@ def health() -> HealthResponse:
     return HealthResponse(**data)
 
 
+@app.get("/test-groq")
+def test_groq():
+    import urllib.request
+    import json
+    settings = get_settings()
+    key = (settings.groq_api_key or "").strip().strip("'\"")
+    
+    if not key:
+        return {"status": "error", "error": "GROQ_API_KEY is empty in settings"}
+
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/models",
+        headers={"Authorization": f"Bearer {key}", "User-Agent": "KnowledgeFlow/2.0"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            return {
+                "status": "ok",
+                "models_count": len(data.get("data", [])),
+                "key_prefix": key[:8] + "...",
+                "configured_model": settings.groq_model,
+                "commit": "diagnose-groq"
+            }
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "key_prefix": key[:8] + "..." if key else "empty",
+            "traceback": traceback.format_exc()
+        }
+
+
 @app.get("/analytics", response_model=AnalyticsResponse, tags=["Analytics"])
 def get_analytics() -> AnalyticsResponse:
     stats = get_vector_store().get_analytics()
