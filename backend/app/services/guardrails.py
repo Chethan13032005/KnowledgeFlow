@@ -1,7 +1,7 @@
 import re
 from typing import Tuple
 
-# Fast compiled regex patterns for zero-overhead execution (<2ms)
+# Fast compiled regex patterns for zero-overhead execution (< 2ms)
 JAILBREAK_PATTERNS = [
     re.compile(r"ignore\s+(all\s+)?(previous|prior)\s+instructions?", re.IGNORECASE),
     re.compile(r"you\s+are\s+now\s+(a|an|in)?\s*(dan|developer|jailbreak|unrestricted|god)\s+mode", re.IGNORECASE),
@@ -9,6 +9,11 @@ JAILBREAK_PATTERNS = [
     re.compile(r"repeat\s+(the\s+)?(text|words|instructions)\s+above", re.IGNORECASE),
     re.compile(r"(disregard|forget)\s+all\s+(rules|guidelines|instructions)", re.IGNORECASE),
     re.compile(r"bypass\s+all\s+(safety|security|filters)", re.IGNORECASE),
+    re.compile(r"pretend\s+(you\s+)?(are|to\s+be)\s+(a|an)\s+", re.IGNORECASE),
+    re.compile(r"act\s+as\s+(if|though)\s+you\s+(have|had)\s+no\s+(restrictions|rules|limits)", re.IGNORECASE),
+    re.compile(r"override\s+(your|all)\s+(programming|instructions|safety)", re.IGNORECASE),
+    re.compile(r"(what|show|tell|reveal|print|output)\s+(me\s+)?(your|the)\s+(system|initial|original)\s+(prompt|instructions|message)", re.IGNORECASE),
+    re.compile(r"(do\s+not|don'?t)\s+(follow|obey|listen\s+to)\s+(your|the)\s+(rules|guidelines|instructions)", re.IGNORECASE),
 ]
 
 EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
@@ -59,7 +64,6 @@ def compute_faithfulness_score(answer: str, retrieved_chunks: list[dict]) -> flo
     """
     Fast zero-dependency n-gram and token overlap score between generated answer
     and retrieved context chunks (0.0 to 1.0).
-    Adds 0 LLM calls and consumes negligible CPU/RAM.
     """
     if not answer or not retrieved_chunks:
         return 0.0
@@ -93,8 +97,6 @@ def compute_faithfulness_score(answer: str, retrieved_chunks: list[dict]) -> flo
     matched = sum(1 for t in eval_tokens if t in context_tokens)
     matched += sum(1 for b in eval_bigrams if b in context_tokens)
 
-    # Normalized bounded score between 0.0 and 1.0 with baseline boost for grounded phrasing
     raw_score = matched / total_tokens
-    # Scale: typical good RAG outputs have 40-70% content overlap with source chunks
     normalized_score = min(1.0, round(raw_score * 1.5, 2))
     return max(0.1, normalized_score)

@@ -393,7 +393,7 @@ class VectorStore:
                 )
         return True
 
-    def check_semantic_cache(self, q_vector: list[float], mode: str, threshold: float = 0.92) -> dict[str, Any] | None:
+    def check_semantic_cache(self, q_vector: list[float], mode: str, threshold: float = 0.90) -> dict[str, Any] | None:
         """
         Check semantic cache for query similarity >= threshold with matching persona/mode.
         Returns cached response or None.

@@ -24,6 +24,15 @@ export default function Home() {
   // Navigation State ("chat" | "ingest" | "collections" | "analytics" | "activity")
   const [currentView, setCurrentView] = useState("chat");
 
+  // Smooth view switching — reload analytics on switch
+  function switchView(view) {
+    setCurrentView(view);
+    if (view === "analytics") {
+      loadAnalytics();
+      loadRealtimeAnalytics();
+    }
+  }
+
   // Modals State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -546,7 +555,7 @@ export default function Home() {
         {/* Left Navigation Sidebar */}
         <AppSidebar
           currentView={currentView}
-          setCurrentView={setCurrentView}
+          setCurrentView={switchView}
           collectionName={collectionName}
           setCollectionName={setCollectionName}
           collections={collections}
@@ -559,7 +568,7 @@ export default function Home() {
           {/* Top Bar with Collection Selector & Search */}
           <AppNavbar
             collectionName={collectionName}
-            onOpenCollections={() => setCurrentView("collections")}
+            onOpenCollections={() => switchView("collections")}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
@@ -589,7 +598,7 @@ export default function Home() {
               handleClearQuestion={handleClearQuestion}
               onNewChat={handleNewChat}
               copyText={copyText}
-              onOpenIngest={() => setCurrentView("ingest")}
+              onOpenIngest={() => switchView("ingest")}
               onPreviewSource={(src) => setPreviewSource(src)}
             />
           </div>
@@ -620,7 +629,7 @@ export default function Home() {
               activeCollection={collectionName}
               onSelectCollection={(c) => {
                 setCollectionName(c);
-                setCurrentView("chat");
+                switchView("chat");
               }}
               onDeleteCollection={handleDeleteCollection}
               onCreateCollection={handleCreateCollection}
@@ -665,7 +674,7 @@ export default function Home() {
       {/* Mobile Navigation */}
       <MobileBottomNav
         currentView={currentView}
-        setCurrentView={setCurrentView}
+        setCurrentView={switchView}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
@@ -696,7 +705,7 @@ export default function Home() {
         }}
         onQuickAsk={(q) => {
           setIsSearchOpen(false);
-          setCurrentView("chat");
+          switchView("chat");
           handleAsk(q);
         }}
       />
