@@ -393,9 +393,11 @@ class VectorStore:
                 )
         return True
 
-    def check_semantic_cache(self, q_vector: list[float], mode: str, threshold: float = 0.90) -> dict[str, Any] | None:
+    def check_semantic_cache(self, q_vector: list[float], mode: str, threshold: float = 0.84) -> dict[str, Any] | None:
         """
-        Check semantic cache for query similarity >= threshold with matching persona/mode.
+        Check semantic cache for query similarity >= threshold.
+        Applies universally across all content types (normal text, code, docs) and modes.
+        Prefers exact mode match if available, but matches any valid cached answer above threshold.
         Returns cached response or None.
         """
         pg_vec = vector_to_pg(q_vector)
@@ -406,20 +408,22 @@ class VectorStore:
                     try:
                         cur.execute(
                             "SELECT id, query_text, response_text, sources, similarity FROM match_semantic_cache(%s::extensions.vector, %s, %s);",
-                            (pg_vec, mode, threshold),
+                            (pg_vec, mode or "standard", threshold),
                         )
                         row = cur.fetchone()
                     except Exception:
                         conn.rollback()
                         cur.execute(
                             """
-                            SELECT id, query_text, response_text, sources, (1 - (query_embedding <=> %s::extensions.vector)) AS similarity
+                            SELECT id, query_text, response_text, sources, (1 - (query_embedding <=> %s::extensions.vector))::float AS similarity
                             FROM semantic_cache
-                            WHERE mode = %s AND (1 - (query_embedding <=> %s::extensions.vector)) >= %s
-                            ORDER BY query_embedding <=> %s::extensions.vector
+                            WHERE (1 - (query_embedding <=> %s::extensions.vector)) >= %s
+                            ORDER BY 
+                                CASE WHEN mode = %s THEN 0 ELSE 1 END,
+                                query_embedding <=> %s::extensions.vector
                             LIMIT 1;
                             """,
-                            (pg_vec, mode, pg_vec, threshold, pg_vec),
+                            (pg_vec, pg_vec, threshold, mode or "standard", pg_vec),
                         )
                         row = cur.fetchone()
 

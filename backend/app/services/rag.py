@@ -155,7 +155,7 @@ class RAGService:
         q_vector = embed_query(sanitized_query)
         log_timing("query embedding", time.perf_counter() - t_emb)
 
-        cached = self.vector_store.check_semantic_cache(q_vector, mode=active_mode, threshold=0.90)
+        cached = self.vector_store.check_semantic_cache(q_vector, mode=active_mode, threshold=0.84)
         if cached:
             ttft_ms = (time.perf_counter() - total_start) * 1000
             cached_answer = cached.get("response_text", "")
@@ -286,7 +286,13 @@ Answer (ONLY from the retrieved context above, max 250 words):"""
         # 11. Background persist (cache + telemetry)
         def _persist():
             try:
-                if full_answer and len(full_answer) > 30 and not full_answer.startswith("[Generation error") and confidence >= 0.50:
+                if (
+                    full_answer
+                    and len(full_answer) > 15
+                    and not full_answer.startswith("[Generation error")
+                    and not full_answer.startswith("The uploaded sources do not contain")
+                    and confidence >= MIN_CONFIDENCE_THRESHOLD
+                ):
                     self.vector_store.store_semantic_cache(
                         query_text=sanitized_query, q_vector=q_vector,
                         response_text=full_answer, sources=formatted_sources, mode=active_mode,
@@ -323,9 +329,9 @@ Answer (ONLY from the retrieved context above, max 250 words):"""
                 "sources": [],
             }
 
-        # Check cache
+        # Check cache (universal across text, code, docs)
         q_vector = embed_query(sanitized_query)
-        cached = self.vector_store.check_semantic_cache(q_vector, mode=active_mode, threshold=0.90)
+        cached = self.vector_store.check_semantic_cache(q_vector, mode=active_mode, threshold=0.84)
         if cached:
             return {
                 "answer": cached["response_text"],
@@ -400,8 +406,12 @@ Answer (ONLY from the retrieved context above, max 250 words):"""
 
         answer = completion.choices[0].message.content or ""
 
-        # Only cache high-confidence answers
-        if confidence >= 0.50 and len(answer) > 30:
+        # Only cache grounded, quality answers
+        if (
+            confidence >= MIN_CONFIDENCE_THRESHOLD
+            and len(answer) > 15
+            and not answer.startswith("The uploaded sources do not contain")
+        ):
             threading.Thread(
                 target=self.vector_store.store_semantic_cache,
                 args=(sanitized_query, q_vector, answer, formatted_sources, active_mode),
